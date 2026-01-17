@@ -1,83 +1,44 @@
+from fastapi import APIRouter, HTTPException
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from app.schemas import TaskCreate, TaskRead
 
-from app.database import get_session
-from app.models import Task
-from app.schemas import TaskCreate, TaskRead, TaskUpdate
+router = APIRouter()  # <-- IMPORTANT: no /api here
 
-router = APIRouter(prefix="/api/{user_id}/tasks", tags=["tasks"])
+# In-memory store (demo). Replace with DB if you already have one.
+TASKS_DB = {}  # { user_id: [ {id,title,completed}, ... ] }
+NEXT_ID = 1
 
+@router.get("/{user_id}/tasks/", response_model=List[TaskRead])
+def list_tasks(user_id: str):
+    return TASKS_DB.get(user_id, [])
 
-@router.get("/", response_model=List[TaskRead])
-def list_tasks(user_id: str, session: Session = Depends(get_session)):
-    statement = select(Task).where(Task.user_id == user_id)
-    return session.exec(statement).all()
-
-
-@router.post("/", response_model=TaskRead, status_code=201)
-def create_task(
-    user_id: str,
-    payload: TaskCreate,
-    session: Session = Depends(get_session),
-):
-    task = Task(
-        user_id=user_id,
-        title=payload.title,
-        description=payload.description,
-    )
-    session.add(task)
-    session.commit()
-    session.refresh(task)
+@router.post("/{user_id}/tasks/", response_model=TaskRead)
+def create_task(user_id: str, payload: TaskCreate):
+    global NEXT_ID
+    task = {
+        "id": NEXT_ID,
+        "user_id": user_id,
+        "title": payload.title,
+        "completed": False,
+    }
+    NEXT_ID += 1
+    TASKS_DB.setdefault(user_id, []).append(task)
     return task
 
+@router.patch("/{user_id}/tasks/{task_id}/complete/", response_model=TaskRead)
+def toggle_complete(user_id: str, task_id: int):
+    tasks = TASKS_DB.get(user_id, [])
+    for t in tasks:
+        if t["id"] == task_id:
+            t["completed"] = not t["completed"]
+            return t
+    raise HTTPException(status_code=404, detail="Task not found")
 
-@router.put("/{task_id}", response_model=TaskRead)
-def update_task(
-    user_id: str,
-    task_id: int,
-    payload: TaskUpdate,
-    session: Session = Depends(get_session),
-):
-    task = session.get(Task, task_id)
-    if not task or task.user_id != user_id:
+@router.delete("/{user_id}/tasks/{task_id}")
+def delete_task(user_id: str, task_id: int):
+    tasks = TASKS_DB.get(user_id, [])
+    new_tasks = [t for t in tasks if t["id"] != task_id]
+    if len(new_tasks) == len(tasks):
         raise HTTPException(status_code=404, detail="Task not found")
-
-    task.title = payload.title
-    task.description = payload.description
-    session.add(task)
-    session.commit()
-    session.refresh(task)
-    return task
-
-
-@router.delete("/{task_id}")
-def delete_task(
-    user_id: str,
-    task_id: int,
-    session: Session = Depends(get_session),
-):
-    task = session.get(Task, task_id)
-    if not task or task.user_id != user_id:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    session.delete(task)
-    session.commit()
-    return {"status": "deleted", "id": task_id}
-
-
-@router.patch("/{task_id}/complete", response_model=TaskRead)
-def toggle_complete(
-    user_id: str,
-    task_id: int,
-    session: Session = Depends(get_session),
-):
-    task = session.get(Task, task_id)
-    if not task or task.user_id != user_id:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    task.completed = not task.completed
-    session.add(task)
-    session.commit()
-    session.refresh(task)
-    return task
+    TASKS_DB[user_id] = new_tasks
+    return {"ok": True}
