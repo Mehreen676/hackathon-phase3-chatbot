@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Task = {
@@ -19,6 +19,8 @@ const API_BASE =
 
 const AUTH_KEY = "todo_user_id";
 
+type ChatMsg = { role: "user" | "bot"; text: string };
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -35,6 +37,19 @@ export default function DashboardPage() {
     setToast(msg);
     setTimeout(() => setToast(null), 2000);
   };
+
+  // ✅ CHAT (floating) STATES
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([
+    {
+      role: "bot",
+      text: 'Commands: list, pending, completed, stats, add: Title | optional description, complete: <id>, delete: <id>',
+    },
+  ]);
+
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const id = localStorage.getItem(AUTH_KEY);
@@ -100,7 +115,6 @@ export default function DashboardPage() {
   };
 
   const toggleComplete = async (taskId: number) => {
-    // IMPORTANT: backend swagger shows /complete (no trailing slash). Keep consistent.
     const url = `${API_BASE}/api/${encodeURIComponent(userId)}/tasks/${taskId}/complete`;
     const res = await fetch(url, { method: "PATCH" });
     if (res.ok) {
@@ -121,6 +135,55 @@ export default function DashboardPage() {
       showToast("❌ Delete failed");
     }
   };
+
+  // ✅ CHAT HANDLER (backend expects POST /api/{user_id}/chat)
+  const sendChat = async () => {
+    const msg = chatInput.trim();
+    if (!msg) return;
+
+    setChatSending(true);
+    setChatInput("");
+
+    setChatMsgs((prev) => [...prev, { role: "user", text: msg }]);
+
+    try {
+      const url = `${API_BASE}/api/${encodeURIComponent(userId)}/chat`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        const reply =
+          typeof data?.reply === "string"
+            ? data.reply
+            : typeof data === "string"
+              ? data
+              : JSON.stringify(data);
+
+        setChatMsgs((prev) => [...prev, { role: "bot", text: reply }]);
+        await fetchTasks(userId); // chat ke baad refresh
+      } else {
+        const err =
+          typeof data?.detail === "string" ? data.detail : "❌ Chat failed";
+        setChatMsgs((prev) => [...prev, { role: "bot", text: err }]);
+      }
+    } catch {
+      setChatMsgs((prev) => [...prev, { role: "bot", text: "❌ Chat failed" }]);
+    } finally {
+      setChatSending(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!chatOpen) return;
+    const el = chatScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [chatMsgs, chatOpen]);
 
   const signOut = () => {
     localStorage.removeItem(AUTH_KEY);
@@ -152,6 +215,7 @@ export default function DashboardPage() {
           <StatCard label="Pending" value={totals.pending} color="text-orange-400" />
         </div>
 
+        {/* NEW TASK */}
         <div className="bg-[#121821] rounded-2xl p-6 border border-[#1f2937] mb-8">
           <h2 className="text-white font-semibold text-lg mb-4">New Task</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -177,6 +241,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* TASK LIST */}
         <div className="space-y-4">
           {loading ? (
             <div className="text-gray-400">Loading tasks...</div>
@@ -231,8 +296,114 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ✅ FLOATING AI BUTTON */}
+      <button
+        onClick={() => setChatOpen(true)}
+        className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-[#f5c16c] text-black font-bold shadow-2xl hover:brightness-95 transition"
+        aria-label="Open Todo AI Assistant"
+      >
+        AI
+      </button>
+
+      {/* ✅ CHAT MODAL */}
+      {chatOpen && (
+        <div className="fixed inset-0 z-50">
+          {/* overlay */}
+          <button
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setChatOpen(false)}
+            aria-label="Close overlay"
+          />
+
+          {/* panel */}
+          <div className="absolute bottom-6 right-6 w-[360px] max-w-[92vw] rounded-2xl border border-[#1f2937] bg-[#121821] shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f2937]">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#0b0f14] border border-[#1f2937] text-sm">
+                  🤖
+                </span>
+                <div className="text-sm font-semibold text-[#f5c16c]">Todo AI Assistant</div>
+              </div>
+
+              <button
+                onClick={() => setChatOpen(false)}
+                className="text-gray-300 hover:text-white text-xl leading-none"
+                aria-label="Close chat"
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              ref={chatScrollRef}
+              className="max-h-[320px] overflow-y-auto px-4 py-3 space-y-3"
+            >
+              {chatMsgs.map((m, idx) => (
+                <div key={idx} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
+                  <div
+                    className={[
+                      "max-w-[85%] rounded-2xl px-3 py-2 text-sm border",
+                      m.role === "user"
+                        ? "bg-[#f5c16c] text-black border-[#f5c16c]"
+                        : "bg-[#0b0f14] text-gray-100 border-[#1f2937]",
+                    ].join(" ")}
+                  >
+                    <pre className="whitespace-pre-wrap font-sans">{m.text}</pre>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* input row */}
+            <div className="px-4 pb-4 pt-2 border-t border-[#1f2937]">
+              <div className="flex items-center gap-3">
+                {/* ✅ IMPORTANT FIX: input NOT transparent */}
+                <input
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") sendChat();
+                  }}
+                  placeholder='Type: "list" or "add: Buy milk | 2L"'
+                  className="
+                    flex-1
+                    rounded-xl
+                    px-4 py-3
+                    text-white
+                    bg-[#0b0f14]
+                    bg-opacity-100
+                    border border-[#1f2937]
+                    outline-none
+                    placeholder:text-gray-400
+                    focus:border-[#f5c16c]
+                  "
+                />
+
+                <button
+                  onClick={sendChat}
+                  disabled={chatSending || !chatInput.trim()}
+                  className="rounded-xl px-5 py-3 font-semibold text-black bg-[#f5c16c] hover:brightness-95 transition disabled:opacity-60"
+                >
+                  {chatSending ? "..." : "Send"}
+                </button>
+              </div>
+
+              <div className="mt-2 text-[11px] text-gray-400">
+                Examples: <span className="text-gray-300">list</span>,{" "}
+                <span className="text-gray-300">pending</span>,{" "}
+                <span className="text-gray-300">completed</span>,{" "}
+                <span className="text-gray-300">stats</span>,{" "}
+                <span className="text-gray-300">add: milk | 2 liters</span>,{" "}
+                <span className="text-gray-300">complete: 1</span>,{" "}
+                <span className="text-gray-300">delete: 1</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-xl border border-[#1f2937] bg-[#121821] px-4 py-3 text-sm text-gray-100 shadow-2xl">
+        <div className="fixed bottom-6 right-24 z-50 rounded-xl border border-[#1f2937] bg-[#121821] px-4 py-3 text-sm text-gray-100 shadow-2xl">
           {toast}
         </div>
       )}

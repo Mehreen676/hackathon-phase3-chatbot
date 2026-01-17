@@ -9,13 +9,9 @@ from app.router.chat import router as chat_router
 
 app = FastAPI(title="Hackathon Todo API")
 
-# ✅ CORS (Frontend ↔ Backend allow)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,6 +21,11 @@ app.add_middleware(
 def on_startup():
     SQLModel.metadata.create_all(engine)
 
+@app.get("/")
+def root():
+    return {"message": "Hackathon Todo API running"}
+
+# IMPORTANT
 app.include_router(tasks_router)
 app.include_router(chat_router)
 
