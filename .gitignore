@@ -107,3 +107,9 @@ hf-backend/
 # =========================
 !screenshots/
 !screenshots/**/*
+# Root / backend node junk (local only)
+package.json
+package-lock.json
+backend/package.json
+backend/package-lock.json
+body.json
