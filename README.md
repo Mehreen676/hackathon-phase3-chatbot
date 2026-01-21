@@ -1,92 +1,180 @@
-# Hackathon Phase 3 – Todo Chatbot 🤖
+🧠 Hackathon II — Phase 3
+Agent-Based Todo Chatbot (Stateful & Tool-Driven)
 
-This project is **Phase 3** of the Hackathon Todo Application.  
-It extends the existing **Phase 2 Full-Stack Todo App** by adding a **chatbot interface** that allows users to manage tasks using **natural language commands**.
+This project implements a Phase-3 compliant Todo Chatbot using the OpenAI Agents SDK with MCP tools and persistent conversation memory.
+The focus of Phase-3 is agent correctness, tool-only actions, and real statefulness — not UI novelty or Phase-4 features.
 
----
+✅ What Was Built
 
-## 🚀 Features
+A full-stack Todo application where users manage tasks via natural-language chat.
 
-### ✅ Chatbot Capabilities
-Users can control their todo list via chat commands:
+Users can:
 
-- `list` → List all tasks  
-- `pending` → Show pending tasks  
-- `completed` → Show completed tasks  
-- `stats` → Show task statistics  
-- `add milk` / `add: Buy milk` → Add a new task  
-- `complete: <id>` → Mark a task as completed  
-- `delete: <id>` → Delete a task  
+Add tasks
 
-The chatbot supports **simple natural language** as well as **strict command syntax**.
+List tasks
 
----
+Complete tasks
 
-## 🧠 How It Works
+Delete tasks
 
-- The chatbot is **NOT a separate AI system**
-- It directly interacts with the **same backend & database** used by the Todo app
-- All chat actions are reflected instantly in the main UI
+All actions are executed only through MCP tools, not directly by the agent.
 
----
+🔧 Backend Architecture (Core of Phase-3)
 
-## 🏗️ Tech Stack
+OpenAI Agents SDK integrated
 
-### Frontend
-- Next.js (App Router)
-- TypeScript
-- Tailwind CSS
-- Chat modal UI integrated into dashboard
+MCP (Model Context Protocol) tools implemented:
 
-### Backend
-- FastAPI
-- SQLModel
-- PostgreSQL / SQLite
-- REST API
+add_task
 
-### Deployment
-- Frontend: Vercel
-- Backend: Hugging Face Spaces
+list_tasks
 
----
+complete_task
 
-## 🔌 API Endpoint
+delete_task
 
-Chatbot endpoint:
+update_task
+
+Agent is tool-driven only
+
+❌ No direct DB access by the agent
+
+FastAPI backend
+
+Neon PostgreSQL for persistence:
+
+Tasks
+
+Conversations
+
+Messages
+
+Chat API
+POST /api/{user_id}/chat
 
 
-### Example Request
-```json
-{
-  "message": "add milk"
-}
+Agent receives:
 
-{
-  "reply": "Added: 36: milk"
-}
-🧪 Tested Commands
+USER_ID explicitly in the prompt
 
-✔ Add tasks via chat
-✔ List tasks
-✔ Show pending / completed tasks
-✔ Delete tasks by ID
-✔ Live sync between chat & UI
-✔ Error handling for invalid commands
-hackathon-phase3-chatbot
-├── frontend
-│   └── Next.js app with chat UI
-├── backend
-│   ├── main.py
-│   └── app/router/chat.py
-└── README.md
-Hackathon Compliance
+Conversation history from database
 
-✔ Separate Phase-3 repository
-✔ Chatbot implemented as per PDF requirements
-✔ No modification to Phase-2 repo
-✔ Backend + frontend fully integrated
+Agent interprets natural language and triggers MCP tools
 
-👤 Author
+💬 Conversation Memory (Statefulness)
 
-Mehreen Asghar
-Hackathon Participant
+This chatbot is not stateless and not in-memory.
+
+Implemented:
+
+conversations table
+
+messages table
+
+User + assistant messages persisted
+
+Same conversation_id maintains context
+
+Memory survives server restarts
+
+✅ Confirms true stateful chatbot, as required in Phase-3.
+
+🖥️ Frontend Integration
+
+Built with Next.js (App Router)
+
+Chatbot integrated directly into the dashboard
+
+Users can manage tasks in real time via chat
+
+Dashboard task list stays in sync with chatbot actions
+
+Toast notifications shown on:
+
+task add
+
+task complete
+
+task delete
+
+🎨 Chat UI Design Note (Important)
+
+The chatbot UI is a custom ChatKit-style UI.
+
+Why not official ChatKit?
+The official ChatKit React package is incompatible with Next.js App Router + Turbopack.
+
+Instead:
+
+A custom ChatKit-style UI was implemented
+
+Same interaction flow
+
+Continuous conversation experience
+
+Fully functional and Phase-3 compliant
+
+This avoids framework instability while preserving required behavior.
+
+📸 Screenshots (Verification Proof)
+
+Screenshots are included to demonstrate:
+
+Dashboard with chatbot visible
+
+Tasks added via chatbot
+
+Tasks deleted/completed via chatbot
+
+Dashboard reflecting real-time updates
+
+Screenshots folder contains:
+
+dashboard-chatbot.png
+
+chatbot-delete-task.png
+
+These screenshots validate:
+
+Agent → MCP → Database → UI flow
+
+Correct Phase-3 behavior
+
+📋 Phase-3 Requirement Checklist
+Requirement	Status
+OpenAI Agents SDK	✅
+MCP Tools Usage	✅
+Tool-Only Task Management	✅
+Stateful Conversation Memory	✅
+Database Persistence	✅
+Chat API	✅
+Frontend Chatbot Integration	✅
+ChatKit-style UX	✅ (Custom)
+🚫 Explicitly Not Included (By Design)
+
+❌ Embeddings
+
+❌ Vector search
+
+❌ Semantic retrieval
+
+❌ Phase-4 features
+
+These are intentionally out of scope for Phase-3.
+
+🏁 Final Assessment
+
+This project delivers:
+
+A real agent system, not a scripted chatbot
+
+Strict tool-driven task execution
+
+Persistent conversation memory
+
+Clean separation of concerns
+
+Stable frontend + backend integration
+
+✅ Phase-3: COMPLETE & FULLY COMPLIANT
