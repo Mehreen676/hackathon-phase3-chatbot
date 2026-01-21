@@ -1,20 +1,50 @@
-from typing import Optional
 from datetime import datetime
-from sqlmodel import SQLModel, Field
-from sqlalchemy import Column, DateTime, func
+from typing import Optional
 
+from sqlmodel import SQLModel, Field
+
+
+# =========================
+# TASK MODEL (EXISTING)
+# =========================
 class Task(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: str = Field(index=True)
 
     title: str
-    description: Optional[str] = None
+    completed: bool = Field(default=False)
 
-    completed: bool = Field(default=False, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+# =========================
+# CONVERSATION MODEL
+# =========================
+class Conversation(SQLModel, table=True):
+    __tablename__ = "conversations"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# =========================
+# MESSAGE MODEL
+# =========================
+class Message(SQLModel, table=True):
+    __tablename__ = "messages"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    conversation_id: int = Field(
+        foreign_key="conversations.id",
+        index=True
     )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-    )
+    user_id: str = Field(index=True)
+
+    role: str  # "user" | "assistant"
+    content: str
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)

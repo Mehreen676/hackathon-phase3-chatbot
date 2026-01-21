@@ -1,69 +1,90 @@
-from fastapi import APIRouter, HTTPException
+# backend/app/router/chat.py
+
+from typing import Optional, List, Any, Dict
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-import re
+from sqlmodel import Session, select
 
-from app.routes.tasks import TASKS_DB, create_task, list_tasks, toggle_complete, delete_task
-from app.schemas import TaskCreate
+from app.db import get_session
+from app.models import Conversation, Message
+from app.agent_runner import run_chat  # ✅ use Agent Runner (spec flow)
 
-router = APIRouter()  # <-- IMPORTANT: no /api here
+router = APIRouter()
+
 
 class ChatRequest(BaseModel):
     message: str
+    conversation_id: Optional[int] = None
+
 
 class ChatResponse(BaseModel):
     reply: str
+    conversation_id: int
+    tool_calls: List[Any] = []
+
+
+def _get_or_create_conversation(session: Session, user_id: str, conversation_id: Optional[int]) -> Conversation:
+    if conversation_id is not None:
+        conv = session.get(Conversation, conversation_id)
+        if not conv or conv.user_id != user_id:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        return conv
+
+    latest = session.exec(
+        select(Conversation)
+        .where(Conversation.user_id == user_id)
+        .order_by(Conversation.id.desc())
+        .limit(1)
+    ).first()
+    if latest:
+        return latest
+
+    conv = Conversation(user_id=user_id, created_at=datetime.utcnow())
+    session.add(conv)
+    session.commit()
+    session.refresh(conv)
+    return conv
+
+
+def _save_message(session: Session, conversation_id: int, role: str, content: str) -> None:
+    session.add(
+        Message(
+            conversation_id=conversation_id,
+            role=role,
+            content=content,
+            created_at=datetime.utcnow(),
+        )
+    )
+    session.commit()
+
 
 @router.post("/{user_id}/chat", response_model=ChatResponse)
-def chat(user_id: str, payload: ChatRequest):
+async def chat(user_id: str, payload: ChatRequest, session: Session = Depends(get_session)):
     text = (payload.message or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Empty message")
 
-    # Supported commands:
-    # add: milk
-    # show
-    # complete: 1
-    # delete: 1
-    low = text.lower()
+    # Ensure conversation exists/belongs to user (if provided)
+    conv = _get_or_create_conversation(session, user_id, payload.conversation_id)
 
-    # add: ...
-    m = re.match(r"^add:\s*(.+)$", low)
-    if m:
-        title = text.split(":", 1)[1].strip()
-        if not title:
-            raise HTTPException(status_code=400, detail="Empty task title")
-        create_task(user_id, TaskCreate(title=title))
-        return {"reply": f"Added task: {title}"}
-
-    # show / list
-    if low in ["show", "show tasks", "list", "list tasks", "show my tasks"]:
-        tasks = list_tasks(user_id)
-        if not tasks:
-            return {"reply": "No tasks found."}
-        lines = []
-        for t in tasks:
-            status = "✅" if t["completed"] else "⬜"
-            lines.append(f'{t["id"]}. {status} {t["title"]}')
-        return {"reply": "\n".join(lines)}
-
-    # complete: ID
-    m = re.match(r"^complete:\s*(\d+)$", low)
-    if m:
-        tid = int(m.group(1))
-        t = toggle_complete(user_id, tid)
-        return {"reply": f'Toggled complete: {t["title"]} (now {"done" if t["completed"] else "not done"})'}
-
-    # delete: ID
-    m = re.match(r"^delete:\s*(\d+)$", low)
-    if m:
-        tid = int(m.group(1))
-        delete_task(user_id, tid)
-        return {"reply": f"Deleted task {tid}"}
-
-    return {
-        "reply": (
-            "Commands:\n"
-            "add: <task title>\n"
-            "show\n"
-            "complete: <task id>\n"
-            "delete: <task id>"
+    # Delegate to agent runner (it loads history + stores messages + calls MCP tools)
+    try:
+        result = await run_chat(
+            user_id=user_id,
+            message=text,
+            conversation_id=conv.id,
         )
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # NOTE: agent_runner already stores user+assistant messages.
+    # If you want to keep router responsible for storing, remove storage from agent_runner.
+    return {
+        "reply": result["reply"],
+        "conversation_id": result["conversation_id"],
+        "tool_calls": result.get("tool_calls", []),
     }
