@@ -1,0 +1,85 @@
+{{- if .Values.backend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "todo-ai-chatbot.fullname" . }}-backend
+  labels:
+    {{- include "todo-ai-chatbot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  {{- if not .Values.backend.autoscaling.enabled }}
+  replicas: {{ .Values.backend.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "todo-ai-chatbot.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "todo-ai-chatbot.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+    spec:
+      {{- with .Values.backend.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}-backend
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.global.registry }}{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 7860
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: {{ .Values.backend.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.backend.probes.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: {{ .Values.backend.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.backend.probes.readiness.failureThreshold }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.externalDatabase.passwordSecret }}
+                  key: {{ .Values.externalDatabase.passwordKey }}
+            - name: FRONTEND_URL
+              value: "http://{{ include "todo-ai-chatbot.fullname" . }}-frontend:{{ .Values.frontend.service.port }}"
+            {{- range $key, $value := .Values.backend.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+      {{- with .Values.backend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

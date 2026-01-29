@@ -210,3 +210,61 @@ Clean separation of concerns
 Stable frontend + backend integration
 
 ✅ Hackathon Phase-3: COMPLETE & FULLY COMPLIANT
+
+## 🚀 Phase IV: Kubernetes Deployment
+
+The project now includes a complete Helm chart for deploying the Todo AI Chatbot on Kubernetes:
+
+### Prerequisites
+- Kubernetes 1.19+
+- Helm 3.0+
+- Minikube or a Kubernetes cluster
+- Container images built and pushed to a registry
+
+### Quick Start
+```bash
+# Clone the repository
+git clone <repository-url>
+cd hackathon-phase3-chatbot
+
+# Navigate to the helm chart
+cd helm/todo-ai-chatbot
+
+# Install the chart
+helm install todo-ai ./ -f values-neon.yaml
+```
+
+### Configuration
+The Helm chart includes:
+- Frontend deployment (Next.js application)
+- Backend deployment (FastAPI API server)
+- MCP server deployment (for AI agent tools)
+- Service configurations for inter-component communication
+- Ingress configuration for external access
+- ConfigMap for environment variables
+- Secret templates for sensitive data
+
+### AI DevOps Integration
+The deployment supports AI-assisted DevOps tools:
+- **kubectl-ai**: Intelligent Kubernetes operations
+- **kagent**: Health checks and diagnostics
+- **Docker AI (Gordon)**: Container optimization
+
+For more detailed deployment instructions, see the Helm chart README at `helm/todo-ai-chatbot/README.md`.
+
+### Implementation Artifacts
+The implementation follows the Spec-Driven Development methodology:
+- **Specification**: `specs/main/spec.md` - Functional and non-functional requirements
+- **Implementation Plan**: `specs/main/plan.md` - Technical architecture and approach
+- **Research**: `specs/main/research.md` - Design decisions and alternatives
+- **Data Model**: `specs/main/data-model.md` - System entities and relationships
+- **API Contracts**: `specs/main/contracts/` - API specifications
+- **Tasks Document**: `specs/main/tasks.md` - Implementation tasks and execution plan
+- **Quickstart Guide**: `specs/main/quickstart.md` - Deployment instructions
+
+### Implementation Status
+- **Completed**: All implementation tasks have been executed successfully
+- **Documentation**: Complete implementation history tracked in Prompt History Records (PHRs)
+- **Verification**: All user stories have been validated per the acceptance criteria
+
+These artifacts ensure the implementation meets the constitutional principles of spec-driven infrastructure, cloud-native architecture, and AI-assisted DevOps.

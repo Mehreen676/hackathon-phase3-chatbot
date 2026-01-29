@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir *.yaml *.yml /s)",
+      "Bash(cmd /c \"dir /s *.yaml *.yml\")",
+      "Bash(dir historypromptstasks)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \".specify/scripts/powershell/setup-plan.ps1\" -Json)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \".specify/scripts/powershell/update-agent-context.ps1\" -AgentType claude)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \".specify/scripts/powershell/check-prerequisites.ps1\" -Json)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \".specify/scripts/powershell/check-prerequisites.ps1\" -Json -RequireTasks -IncludeTasks)",
+      "Bash(git rev-parse --git-dir)",
+      "Bash(dir Dockerfile*)",
+      "Bash(dir backendDockerfile frontendDockerfile)",
+      "Bash(dir backendDockerfile)",
+      "Bash(dir frontendDockerfile)",
+      "Bash(dir backend)",
+      "Bash(dir frontend)",
+      "Bash(powershell -Command \"Get-ChildItem -Directory | Select-Object Name\")",
+      "Bash(powershell -Command \"Test-Path backend/Dockerfile\")",
+      "Bash(powershell -Command \"Test-Path frontend/Dockerfile\")",
+      "Bash(powershell -Command \"Test-Path .gitignore\")",
+      "Bash(powershell -Command \"Test-Path .dockerignore\")",
+      "Bash(minikube version)",
+      "Bash(helm version)",
+      "Bash(kubectl version --client)",
+      "Bash(minikube start --memory=4096 --cpus=2)",
+      "Bash(powershell -Command \"@\\(Get-CimInstance Win32_ComputerSystem\\).HypervisorPresent\")",
+      "Bash(docker build -t hackathon-phase3-chatbot/backend:latest backend/)",
+      "Bash(dir historypromptsmain)",
+      "Bash(powershell -Command \"Get-ChildItem -Path history/prompts/main/\")",
+      "Bash(dir /S /B \"C:\\\\Users\\\\Lenovo\\\\Desktop\\\\phase-04\\\\hackathon-phase3-chatbot\\\\helm\"\")",
+      "Bash(helm template:*)",
+      "Bash(helm lint:*)",
+      "Bash(chmod:*)",
+      "Bash(tasklist:*)",
+      "Bash(timeout 15 docker ps:*)",
+      "Bash(docker context:*)",
+      "Bash(timeout 10 docker ps:*)",
+      "Bash(timeout 10 docker info:*)"
+    ]
+  }
+}

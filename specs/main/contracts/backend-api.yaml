@@ -1,0 +1,185 @@
+openapi: 3.0.3
+info:
+  title: Todo AI Chatbot Backend API
+  description: API for the Todo AI Chatbot application backend
+  version: 1.0.0
+servers:
+  - url: http://todo-ai-todo-ai-chatbot-backend:7860
+    description: Backend service in Kubernetes cluster
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+
+  /api/{user_id}/chat:
+    post:
+      summary: Send a message to the AI chatbot
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  example: "Add a new task called 'Buy groceries'"
+      responses:
+        '200':
+          description: AI response with task operation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: string
+                    example: "I've added the task 'Buy groceries' for you."
+                  tool_used:
+                    type: string
+                    example: "add_task"
+
+  /api/{user_id}/tasks/:
+    get:
+      summary: List all tasks for a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+    post:
+      summary: Create a new task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '200':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /api/{user_id}/tasks/{task_id}/complete:
+    patch:
+      summary: Mark a task as complete
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task marked as complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /api/{user_id}/tasks/{task_id}:
+    delete:
+      summary: Delete a task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: string
+          example: "user123"
+        title:
+          type: string
+          example: "Buy groceries"
+        description:
+          type: string
+          example: "Milk, bread, eggs"
+        completed:
+          type: boolean
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          example: "2023-10-01T12:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2023-10-01T12:00:00Z"
+
+    TaskCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          example: "Buy groceries"
+        description:
+          type: string
+          example: "Milk, bread, eggs"
